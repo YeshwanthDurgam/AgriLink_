@@ -1,0 +1,17 @@
+package com.agrilink.common.exception;
+
+import org.springframework.http.HttpStatus;
+
+/**
+ * Exception thrown for invalid request data or business rule violations.
+ */
+public class BadRequestException extends BaseException {
+    
+    public BadRequestException(String message) {
+        super(message, HttpStatus.BAD_REQUEST, "BAD_REQUEST");
+    }
+    
+    public BadRequestException(String message, String errorCode) {
+        super(message, HttpStatus.BAD_REQUEST, errorCode);
+    }
+}
