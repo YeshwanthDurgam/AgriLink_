@@ -13,6 +13,9 @@ import Dashboard from './pages/Dashboard';
 import Farms from './pages/Farms';
 import FarmDetail from './pages/FarmDetail';
 import CreateFarm from './pages/CreateFarm';
+import Orders from './pages/Orders';
+import Marketplace from './pages/Marketplace';
+import Devices from './pages/Devices';
 
 import './App.css';
 
@@ -47,6 +50,21 @@ function App() {
               <Route path="/farms/:id" element={
                 <PrivateRoute>
                   <FarmDetail />
+                </PrivateRoute>
+              } />
+              <Route path="/orders" element={
+                <PrivateRoute>
+                  <Orders />
+                </PrivateRoute>
+              } />
+              <Route path="/marketplace" element={
+                <PrivateRoute>
+                  <Marketplace />
+                </PrivateRoute>
+              } />
+              <Route path="/devices" element={
+                <PrivateRoute>
+                  <Devices />
                 </PrivateRoute>
               } />
               

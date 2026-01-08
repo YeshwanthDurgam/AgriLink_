@@ -1,0 +1,294 @@
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { FiShoppingBag, FiSearch, FiFilter, FiGrid, FiList, FiShoppingCart } from 'react-icons/fi';
+import marketplaceService from '../services/marketplaceService';
+import './Marketplace.css';
+
+const Marketplace = () => {
+  const [listings, setListings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState({
+    category: '',
+    minPrice: '',
+    maxPrice: '',
+    sortBy: 'createdAt,desc'
+  });
+  const [showFilters, setShowFilters] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    fetchListings();
+  }, [page, filters]);
+
+  const fetchCategories = async () => {
+    try {
+      const data = await marketplaceService.getCategories();
+      setCategories(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      // Set default categories
+      setCategories([
+        { id: 1, name: 'Vegetables' },
+        { id: 2, name: 'Fruits' },
+        { id: 3, name: 'Grains' },
+        { id: 4, name: 'Dairy' },
+        { id: 5, name: 'Meat' },
+        { id: 6, name: 'Organic' }
+      ]);
+    }
+  };
+
+  const fetchListings = async () => {
+    setLoading(true);
+    try {
+      const params = {
+        page,
+        size: 12,
+        ...filters,
+        search: searchQuery || undefined
+      };
+      
+      const response = await marketplaceService.getListings(params);
+      
+      if (response.content) {
+        setListings(response.content);
+        setTotalPages(response.totalPages || 1);
+      } else if (Array.isArray(response)) {
+        setListings(response);
+        setTotalPages(1);
+      } else {
+        setListings([]);
+        setTotalPages(1);
+      }
+    } catch (error) {
+      console.error('Error fetching listings:', error);
+      setListings([]);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setPage(0);
+    fetchListings();
+  };
+
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+    setPage(0);
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      category: '',
+      minPrice: '',
+      maxPrice: '',
+      sortBy: 'createdAt,desc'
+    });
+    setSearchQuery('');
+    setPage(0);
+  };
+
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(price || 0);
+  };
+
+  return (
+    <div className="marketplace-page">
+      <div className="marketplace-header">
+        <h1><FiShoppingBag /> Marketplace</h1>
+        <p className="subtitle">Browse fresh produce from local farmers</p>
+      </div>
+
+      <div className="search-filter-bar">
+        <form onSubmit={handleSearch} className="search-form">
+          <FiSearch className="search-icon" />
+          <input
+            type="text"
+            placeholder="Search products..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <button type="submit">Search</button>
+        </form>
+
+        <div className="filter-controls">
+          <button
+            className={`filter-toggle ${showFilters ? 'active' : ''}`}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <FiFilter /> Filters
+          </button>
+
+          <div className="view-toggle">
+            <button
+              className={viewMode === 'grid' ? 'active' : ''}
+              onClick={() => setViewMode('grid')}
+            >
+              <FiGrid />
+            </button>
+            <button
+              className={viewMode === 'list' ? 'active' : ''}
+              onClick={() => setViewMode('list')}
+            >
+              <FiList />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {showFilters && (
+        <div className="filters-panel">
+          <div className="filter-group">
+            <label>Category</label>
+            <select
+              value={filters.category}
+              onChange={(e) => handleFilterChange('category', e.target.value)}
+            >
+              <option value="">All Categories</option>
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.name}>{cat.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label>Min Price</label>
+            <input
+              type="number"
+              placeholder="$0"
+              value={filters.minPrice}
+              onChange={(e) => handleFilterChange('minPrice', e.target.value)}
+            />
+          </div>
+
+          <div className="filter-group">
+            <label>Max Price</label>
+            <input
+              type="number"
+              placeholder="$1000"
+              value={filters.maxPrice}
+              onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
+            />
+          </div>
+
+          <div className="filter-group">
+            <label>Sort By</label>
+            <select
+              value={filters.sortBy}
+              onChange={(e) => handleFilterChange('sortBy', e.target.value)}
+            >
+              <option value="createdAt,desc">Newest First</option>
+              <option value="createdAt,asc">Oldest First</option>
+              <option value="price,asc">Price: Low to High</option>
+              <option value="price,desc">Price: High to Low</option>
+              <option value="title,asc">Name: A-Z</option>
+            </select>
+          </div>
+
+          <button className="clear-filters-btn" onClick={clearFilters}>
+            Clear Filters
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="loading-container">
+          <div className="spinner"></div>
+          <p>Loading marketplace...</p>
+        </div>
+      ) : listings.length === 0 ? (
+        <div className="empty-state">
+          <FiShoppingBag className="empty-icon" />
+          <h2>No Listings Found</h2>
+          <p>There are no products matching your criteria.</p>
+          <button onClick={clearFilters} className="browse-btn">
+            Clear Filters
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className={`listings-container ${viewMode}`}>
+            {listings.map((listing) => (
+              <div key={listing.id} className="listing-card">
+                <div className="listing-image">
+                  {listing.imageUrl ? (
+                    <img src={listing.imageUrl} alt={listing.title} />
+                  ) : (
+                    <div className="no-image">
+                      <FiShoppingBag />
+                    </div>
+                  )}
+                  {listing.category && (
+                    <span className="category-badge">{listing.category}</span>
+                  )}
+                </div>
+
+                <div className="listing-content">
+                  <h3 className="listing-title">{listing.title}</h3>
+                  <p className="listing-description">
+                    {listing.description?.substring(0, 100)}
+                    {listing.description?.length > 100 ? '...' : ''}
+                  </p>
+                  
+                  <div className="listing-meta">
+                    {listing.farmName && (
+                      <span className="farm-name">From: {listing.farmName}</span>
+                    )}
+                    <span className="quantity">
+                      {listing.quantity} {listing.unit || 'units'} available
+                    </span>
+                  </div>
+
+                  <div className="listing-footer">
+                    <span className="price">
+                      {formatPrice(listing.price)}
+                      <span className="unit">/{listing.unit || 'unit'}</span>
+                    </span>
+                    <Link to={`/marketplace/${listing.id}`} className="view-btn">
+                      <FiShoppingCart /> View
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="pagination">
+              <button
+                disabled={page === 0}
+                onClick={() => setPage(p => p - 1)}
+              >
+                Previous
+              </button>
+              <span>Page {page + 1} of {totalPages}</span>
+              <button
+                disabled={page >= totalPages - 1}
+                onClick={() => setPage(p => p + 1)}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+export default Marketplace;
